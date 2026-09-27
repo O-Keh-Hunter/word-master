@@ -1,12 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 interface AccountStatus { connected: boolean; email: string | null; model: string; connectionId: string | null }
 interface Login { url: string; automaticCallback: boolean; expiresAt: number }
 
 export default function AiAccountPage() {
-  // Keep the management password in component memory only.
-  const [password, setPassword] = useState('')
   const [status, setStatus] = useState<AccountStatus | null>(null)
   const [login, setLogin] = useState<Login | null>(null)
   const [callbackUrl, setCallbackUrl] = useState('')
@@ -16,7 +14,7 @@ export default function AiAccountPage() {
   async function api<T>(action: string, body?: object): Promise<T> {
     const response = await fetch(`/api/ai-auth/${action}`, {
       method: body ? 'POST' : 'GET',
-      headers: { 'Content-Type': 'application/json', 'X-AI-Admin-Password': password },
+      headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined,
     })
     const data = await response.json()
@@ -38,6 +36,10 @@ export default function AiAccountPage() {
     if (next.connected && next.connectionId !== status?.connectionId) { setLogin(null); setCallbackUrl('') }
   }
 
+  useEffect(() => {
+    void run(refresh)
+  }, [])
+
   return (
     <div className="p-4 pt-8 space-y-5">
       <Link to="/" className="text-sm text-primary-600">‹ 返回首页</Link>
@@ -48,30 +50,44 @@ export default function AiAccountPage() {
       <div className="rounded-2xl bg-amber-50 p-4 text-sm text-amber-900">
         Antigravity OAuth 为非官方接入，可能导致 Google 账号受限。请先在官方 Antigravity 中完成账号开通。
       </div>
-      <form className="bg-white border rounded-2xl p-4 space-y-3" onSubmit={e => { e.preventDefault(); void run(refresh) }}>
-        <label htmlFor="ai-password" className="block text-sm font-medium">AI 管理密码</label>
-        <input id="ai-password" type="password" value={password} autoComplete="off"
-          onChange={e => { setPassword(e.target.value); setStatus(null); setLogin(null); setCallbackUrl('') }}
-          className="w-full border rounded-xl px-3 py-2" placeholder="输入部署时设置的管理密码" required />
-        <button disabled={busy || !password} className="w-full rounded-xl bg-primary-600 text-white py-2 disabled:opacity-50">
-          {busy ? '处理中…' : status ? '刷新连接状态' : '查看连接状态'}
-        </button>
-      </form>
       {error && <p role="alert" className="text-sm text-red-600 break-words">{error}</p>}
-      {status && (
+      {status ? (
         <div className="bg-white border rounded-2xl p-4 space-y-3">
-          <p className="font-semibold">{status.connected ? '已连接 Google 账号' : '尚未连接'}</p>
-          {status.email && <p className="text-sm break-all">{status.email}</p>}
-          <p className="text-xs text-gray-500">模型：{status.model}</p>
-          <button disabled={busy} onClick={() => void run(async () => {
-            setLogin(await api<Login>('login', {})); setCallbackUrl('')
-          })} className="w-full border border-primary-300 text-primary-700 rounded-xl py-2 disabled:opacity-50">
-            {status.connected ? '更换 Google 账号' : '使用 Google 账号登录'}
+          <p className="font-semibold text-gray-800">
+            状态：<span className={status.connected ? 'text-green-600 font-bold' : 'text-gray-500'}>
+              {status.connected ? '已连接 Google 账号' : '尚未连接'}
+            </span>
+          </p>
+          {status.email && (
+            <p className="text-sm text-gray-700">
+              邮箱：<span className="font-mono font-medium text-gray-900">{status.email}</span>
+            </p>
+          )}
+          <p className="text-sm text-gray-600">
+            模型：<span className="font-mono text-gray-800">{status.model}</span>
+          </p>
+          <div className="pt-2 flex gap-3">
+            <button disabled={busy} onClick={() => void run(async () => {
+              setLogin(await api<Login>('login', {})); setCallbackUrl('')
+            })} className="flex-1 border border-primary-300 text-primary-700 rounded-xl py-2 text-sm disabled:opacity-50">
+              {status.connected ? '更换 Google 账号' : '使用 Google 账号登录'}
+            </button>
+            {status.connected && (
+              <button disabled={busy} onClick={() => void run(async () => {
+                setStatus(await api<AccountStatus>('disconnect', {})); setLogin(null); setCallbackUrl('')
+              })} className="px-4 text-sm text-red-600 border border-red-200 rounded-xl py-2 disabled:opacity-50">
+                断开连接
+              </button>
+            )}
+          </div>
+          <button disabled={busy} onClick={() => void run(refresh)} className="w-full text-xs text-gray-400 py-1 hover:text-gray-600">
+            {busy ? '正在刷新…' : '刷新连接状态'}
           </button>
-          {status.connected && <button disabled={busy} onClick={() => void run(async () => {
-            setStatus(await api<AccountStatus>('disconnect', {})); setLogin(null); setCallbackUrl('')
-          })} className="w-full text-sm text-red-600 py-2 disabled:opacity-50">断开连接</button>}
-          <p className="text-xs text-gray-500">断开仅删除本服务保存的授权。也可前往 Google 账号的第三方连接管理撤销授权。</p>
+          <p className="text-xs text-gray-400">断开仅删除本服务保存的授权。也可前往 Google 账号的第三方连接管理撤销授权。</p>
+        </div>
+      ) : (
+        <div className="bg-white border rounded-2xl p-6 text-center text-sm text-gray-400">
+          正在加载 AI 账号状态…
         </div>
       )}
       {login && (

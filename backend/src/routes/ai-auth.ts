@@ -1,4 +1,3 @@
-import { createHash, timingSafeEqual } from 'crypto'
 import { Router } from 'express'
 import {
   beginAntigravityLogin, completeAntigravityLogin, disconnectAntigravity, getAntigravityStatus,
@@ -6,21 +5,8 @@ import {
 
 const router = Router()
 
-// Existing student profiles are not authenticated administrators. Protect the
-// shared AI account separately; credentials are never returned by these routes.
-router.use((req, res, next) => {
+router.use((_req, res, next) => {
   res.setHeader('Cache-Control', 'no-store')
-  const password = process.env.AI_ADMIN_PASSWORD
-  if (!password) {
-    res.status(503).json({ error: '请先在后端配置 AI_ADMIN_PASSWORD，再管理 AI 账号' })
-    return
-  }
-  const supplied = req.get('X-AI-Admin-Password') || ''
-  const hash = (value: string) => createHash('sha256').update(value).digest()
-  if (!timingSafeEqual(hash(password), hash(supplied))) {
-    res.status(401).json({ error: 'AI 管理密码不正确' })
-    return
-  }
   next()
 })
 
@@ -44,8 +30,7 @@ router.post('/complete', async (req, res) => {
     await completeAntigravityLogin(callbackUrl)
     res.json(getAntigravityStatus())
   } catch (error) {
-    // Service errors never include raw token responses or callback URLs.
-    console.error('[ai-auth] complete failed:', (error as Error).message);
+    console.error('[ai-auth] complete failed:', (error as Error).message)
     res.status(400).json({ error: (error as Error).message })
   }
 })
