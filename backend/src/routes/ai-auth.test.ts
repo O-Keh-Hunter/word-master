@@ -2,13 +2,17 @@ import express from 'express'
 import request from 'supertest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import router from './ai-auth'
-import { beginAntigravityLogin, completeAntigravityLogin, disconnectAntigravity, getAntigravityStatus } from '../services/antigravity-auth'
+import {
+  beginAntigravityLogin, completeAntigravityLogin, disconnectAntigravity,
+  getAntigravityStatus, setSelectedModel,
+} from '../services/antigravity-auth'
 
 vi.mock('../services/antigravity-auth', () => ({
   beginAntigravityLogin: vi.fn(async () => ({ url: 'https://accounts.google.com/', automaticCallback: true })),
   completeAntigravityLogin: vi.fn(async () => {}),
   disconnectAntigravity: vi.fn(),
   getAntigravityStatus: vi.fn(() => ({ connected: false, email: null, model: 'gemini-3-flash' })),
+  setSelectedModel: vi.fn(),
 }))
 const app = express().use(express.json()).use('/api/ai-auth', router)
 beforeEach(() => { vi.clearAllMocks() })
@@ -32,5 +36,13 @@ describe('AI account administration', () => {
     expect((await request(app).post('/api/ai-auth/disconnect').send({})).status).toBe(200)
     expect(beginAntigravityLogin).toHaveBeenCalledOnce()
     expect(disconnectAntigravity).toHaveBeenCalledOnce()
+  })
+  it('validates and switches the active model', async () => {
+    const resBad = await request(app).post('/api/ai-auth/model').send({})
+    expect(resBad.status).toBe(400)
+
+    const resOk = await request(app).post('/api/ai-auth/model').send({ model: 'claude-sonnet-4-6' })
+    expect(resOk.status).toBe(200)
+    expect(setSelectedModel).toHaveBeenCalledWith('claude-sonnet-4-6')
   })
 })

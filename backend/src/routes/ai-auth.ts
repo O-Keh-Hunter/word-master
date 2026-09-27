@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import {
-  beginAntigravityLogin, completeAntigravityLogin, disconnectAntigravity, getAntigravityStatus,
+  beginAntigravityLogin, completeAntigravityLogin, disconnectAntigravity, getAntigravityStatus, setSelectedModel,
 } from '../services/antigravity-auth'
 
 const router = Router()
@@ -40,6 +40,20 @@ router.post('/disconnect', (_req, res) => {
     disconnectAntigravity()
     res.json(getAntigravityStatus())
   } catch { res.status(500).json({ error: '断开失败，请检查账号文件权限' }) }
+})
+
+router.post('/model', (req, res) => {
+  const { model } = req.body || {}
+  if (typeof model !== 'string' || !model.trim()) {
+    res.status(400).json({ error: '请指定要切换的模型名称' })
+    return
+  }
+  try {
+    setSelectedModel(model.trim())
+    res.json(getAntigravityStatus())
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message })
+  }
 })
 
 export default router

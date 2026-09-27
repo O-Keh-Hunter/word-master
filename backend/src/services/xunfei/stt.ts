@@ -1,9 +1,9 @@
 import WebSocket from 'ws'
 import { buildWsAuthUrl } from './auth'
 
-// Spark IAT (中文识别大模型) 接口：iat.xf-yun.com/v1
-// 支持中英文及202种方言自动识别，language 固定 zh_cn
-// lang='en_us' 时设置 ltc=3 只输出英文字符
+// 讯飞流式听写：
+// 默认采用标准版 iat-api.xfyun.cn/v2/iat（所有已注册 AppID 默认开通每日免费额度）
+// 若显式设置 XUNFEI_STT_DOMAIN=slm，则走大模型版 iat.xf-yun.com/v1（需单独付费开通星火听写包）
 
 type SttLanguage = 'zh_cn' | 'en_us'
 
@@ -37,7 +37,7 @@ export function mergeResult(buf: Map<number, string>, result: IatResultText): Ma
 }
 
 /**
- * 创建讯飞 Spark IAT 流式识别会话。
+ * 创建讯飞流式识别会话
  *
  * @param lang      识别语言
  * @param onResult  收到最终识别文本时回调
@@ -49,7 +49,10 @@ export function createXunfeiSttSession(
   onError: (msg: string) => void,
 ): SttStreamSession {
   const APP_ID = process.env.XUNFEI_APP_ID!
-  const iatWs = new WebSocket(buildWsAuthUrl('iat.xf-yun.com', '/v1'))
+  const isV1 = process.env.XUNFEI_STT_DOMAIN === 'slm'
+  const host = isV1 ? 'iat.xf-yun.com' : (process.env.XUNFEI_STT_HOST || 'iat-api.xfyun.cn')
+  const path = isV1 ? '/v1' : (process.env.XUNFEI_STT_PATH || '/v2/iat')
+  const iatWs = new WebSocket(buildWsAuthUrl(host, path))
 
   let resultBuf = new Map<number, string>()
   let seq = 0
@@ -57,7 +60,6 @@ export function createXunfeiSttSession(
   let finished = false
   const pending: Buffer[] = []
 
-  // terminate() 在 TCP 握手完成前（_socket 未赋值）也会抛出
   const terminateIat = () => {
     try { iatWs.terminate() } catch { /* ignore */ }
   }
@@ -65,23 +67,43 @@ export function createXunfeiSttSession(
   const sendChunk = (chunk: Buffer) => {
     if (iatWs.readyState !== WebSocket.OPEN) { pending.push(chunk); return }
     seq++
-    const msg = firstSent
-      ? {
-          header: { app_id: APP_ID, status: 1 },
-          payload: { audio: { encoding: 'raw', sample_rate: 16000, channels: 1, bit_depth: 16, seq, status: 1, audio: chunk.toString('base64') } },
-        }
-      : {
-          header: { app_id: APP_ID, status: 0 },
-          parameter: {
-            iat: {
-              domain: 'slm', language: 'zh_cn', accent: 'mandarin',
-              eos: 5000, dwa: 'wpgs', ptt: 0,
-              ...(lang === 'en_us' ? { ltc: 3 } : {}),
-              result: { encoding: 'utf8', compress: 'raw', format: 'json' },
+    let msg: unknown
+    if (isV1) {
+      msg = firstSent
+        ? {
+            header: { app_id: APP_ID, status: 1 },
+            payload: { audio: { encoding: 'raw', sample_rate: 16000, channels: 1, bit_depth: 16, seq, status: 1, audio: chunk.toString('base64') } },
+          }
+        : {
+            header: { app_id: APP_ID, status: 0 },
+            parameter: {
+              iat: {
+                domain: 'slm', language: 'zh_cn', accent: 'mandarin',
+                eos: 5000, dwa: 'wpgs', ptt: 0,
+                ...(lang === 'en_us' ? { ltc: 3 } : {}),
+                result: { encoding: 'utf8', compress: 'raw', format: 'json' },
+              },
             },
-          },
-          payload: { audio: { encoding: 'raw', sample_rate: 16000, channels: 1, bit_depth: 16, seq, status: 0, audio: chunk.toString('base64') } },
-        }
+            payload: { audio: { encoding: 'raw', sample_rate: 16000, channels: 1, bit_depth: 16, seq, status: 0, audio: chunk.toString('base64') } },
+          }
+    } else {
+      msg = firstSent
+        ? {
+            data: { status: 1, format: 'audio/L16;rate=16000', encoding: 'raw', audio: chunk.toString('base64') },
+          }
+        : {
+            common: { app_id: APP_ID },
+            business: {
+              language: lang === 'en_us' ? 'en_us' : 'zh_cn',
+              domain: 'iat',
+              accent: 'mandarin',
+              vad_eos: 5000,
+              dwa: 'wpgs',
+              ptt: 0,
+            },
+            data: { status: 0, format: 'audio/L16;rate=16000', encoding: 'raw', audio: chunk.toString('base64') },
+          }
+    }
     firstSent = true
     iatWs.send(JSON.stringify(msg))
   }
@@ -92,22 +114,38 @@ export function createXunfeiSttSession(
   })
 
   iatWs.on('message', (raw: WebSocket.RawData) => {
-    const msg = JSON.parse(raw.toString()) as {
-      header: { code: number; message: string; status: number }
+    interface V1Msg {
+      header?: { code: number; message: string; status: number }
       payload?: { result?: { text: string } }
     }
-    if (msg.header.code !== 0) {
-      finished = true
-      onError(`识别服务错误 ${msg.header.code}: ${msg.header.message}`)
-      terminateIat(); return
+    interface V2Msg {
+      code?: number
+      message?: string
+      desc?: string
+      data?: { result?: IatResultText; status?: number }
     }
-    if (msg.payload?.result?.text) {
+    const msg = JSON.parse(raw.toString()) as V1Msg & V2Msg
+    const code = msg.header?.code ?? msg.code ?? 0
+    const errText = msg.header?.message ?? msg.message ?? msg.desc ?? '未知错误'
+    const status = msg.header?.status ?? msg.data?.status ?? 0
+
+    if (code !== 0) {
+      finished = true
+      onError(`识别服务错误 ${code}: ${errText}`)
+      terminateIat()
+      return
+    }
+
+    if (msg.data?.result) {
+      resultBuf = mergeResult(resultBuf, msg.data.result)
+    } else if (msg.payload?.result?.text) {
       try {
         const decoded = Buffer.from(msg.payload.result.text, 'base64').toString('utf8')
         resultBuf = mergeResult(resultBuf, JSON.parse(decoded) as IatResultText)
       } catch { /* ignore */ }
     }
-    if (msg.header.status === 2) {
+
+    if (status === 2) {
       finished = true
       const text = [...resultBuf.entries()].sort(([a], [b]) => a - b).map(([, v]) => v).join('')
       onResult(text)
@@ -126,18 +164,21 @@ export function createXunfeiSttSession(
     end() {
       if (finished) return
       if (!firstSent) {
-        // 没有音频（用户极快松手）
         finished = true
         onResult('')
         terminateIat()
         return
       }
-      // 发送结束帧
       seq++
-      iatWs.send(JSON.stringify({
-        header: { app_id: APP_ID, status: 2 },
-        payload: { audio: { encoding: 'raw', sample_rate: 16000, channels: 1, bit_depth: 16, seq, status: 2, audio: '' } },
-      }))
+      const endMsg = isV1
+        ? {
+            header: { app_id: APP_ID, status: 2 },
+            payload: { audio: { encoding: 'raw', sample_rate: 16000, channels: 1, bit_depth: 16, seq, status: 2, audio: '' } },
+          }
+        : {
+            data: { status: 2, format: 'audio/L16;rate=16000', encoding: 'raw', audio: '' },
+          }
+      iatWs.send(JSON.stringify(endMsg))
     },
     close() {
       if (!finished) { finished = true; terminateIat() }

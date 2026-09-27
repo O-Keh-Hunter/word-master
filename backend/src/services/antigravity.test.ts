@@ -5,6 +5,7 @@ vi.mock('./antigravity-auth', () => ({
   ANTIGRAVITY_ENDPOINT: 'https://daily-cloudcode-pa.sandbox.googleapis.com',
   ANTIGRAVITY_USER_AGENT: 'antigravity/test',
   getAntigravityCredentials: vi.fn(async () => ({ accessToken: 'access', projectId: 'own-project' })),
+  getSelectedModel: vi.fn(() => process.env.ANTIGRAVITY_MODEL || 'gemini-3-flash'),
 }))
 const fetchMock = vi.fn<typeof fetch>()
 beforeEach(() => { fetchMock.mockReset(); vi.stubGlobal('fetch', fetchMock) })

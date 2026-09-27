@@ -1,8 +1,21 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-interface AccountStatus { connected: boolean; email: string | null; model: string; connectionId: string | null }
+interface AccountStatus {
+  connected: boolean
+  email: string | null
+  model: string
+  connectionId: string | null
+  supportedModels?: string[]
+}
 interface Login { url: string; automaticCallback: boolean; expiresAt: number }
+
+const MODEL_OPTIONS: { id: string; label: string; desc: string }[] = [
+  { id: 'gemini-3-flash', label: 'Gemini 3 Flash', desc: '官方默认 · 毫秒级响应，适合实时互动与背单词' },
+  { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', desc: '强力推荐 · 语言自然地道，例句丰富贴切' },
+  { id: 'claude-opus-4-6-thinking', label: 'Claude Opus 4.6 Thinking', desc: '深度思考 · 逻辑推理全面，适合复杂判题' },
+  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: '备用模型 · 快速稳定' },
+]
 
 export default function AiAccountPage() {
   const [status, setStatus] = useState<AccountStatus | null>(null)
@@ -36,9 +49,18 @@ export default function AiAccountPage() {
     if (next.connected && next.connectionId !== status?.connectionId) { setLogin(null); setCallbackUrl('') }
   }
 
+  async function handleModelChange(newModel: string) {
+    await run(async () => {
+      const next = await api<AccountStatus>('model', { model: newModel })
+      setStatus(next)
+    })
+  }
+
   useEffect(() => {
     void run(refresh)
   }, [])
+
+  const currentDesc = MODEL_OPTIONS.find(opt => opt.id === status?.model)?.desc
 
   return (
     <div className="p-4 pt-8 space-y-5">
@@ -52,21 +74,43 @@ export default function AiAccountPage() {
       </div>
       {error && <p role="alert" className="text-sm text-red-600 break-words">{error}</p>}
       {status ? (
-        <div className="bg-white border rounded-2xl p-4 space-y-3">
-          <p className="font-semibold text-gray-800">
-            状态：<span className={status.connected ? 'text-green-600 font-bold' : 'text-gray-500'}>
-              {status.connected ? '已连接 Google 账号' : '尚未连接'}
-            </span>
-          </p>
-          {status.email && (
-            <p className="text-sm text-gray-700">
-              邮箱：<span className="font-mono font-medium text-gray-900">{status.email}</span>
+        <div className="bg-white border rounded-2xl p-4 space-y-4">
+          <div>
+            <span className="text-xs text-gray-400 font-semibold tracking-wider uppercase">连接状态</span>
+            <p className="text-base font-semibold text-gray-800 mt-0.5">
+              <span className={status.connected ? 'text-green-600 font-bold' : 'text-gray-500'}>
+                {status.connected ? '● 已连接 Google 账号' : '○ 尚未连接'}
+              </span>
             </p>
+          </div>
+          {status.email && (
+            <div>
+              <span className="text-xs text-gray-400 font-semibold tracking-wider uppercase">授权邮箱</span>
+              <p className="text-sm font-mono font-medium text-gray-800 mt-0.5 break-all">{status.email}</p>
+            </div>
           )}
-          <p className="text-sm text-gray-600">
-            模型：<span className="font-mono text-gray-800">{status.model}</span>
-          </p>
-          <div className="pt-2 flex gap-3">
+          <div className="space-y-1.5 pt-1 border-t border-gray-100">
+            <label htmlFor="model-select" className="block text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              AI 模型选择
+            </label>
+            <select
+              id="model-select"
+              value={status.model}
+              disabled={busy}
+              onChange={e => void handleModelChange(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+            >
+              {MODEL_OPTIONS.map(opt => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            {currentDesc && (
+              <p className="text-xs text-primary-600 font-normal mt-1">{currentDesc}</p>
+            )}
+          </div>
+          <div className="pt-2 flex gap-3 border-t border-gray-100">
             <button disabled={busy} onClick={() => void run(async () => {
               setLogin(await api<Login>('login', {})); setCallbackUrl('')
             })} className="flex-1 border border-primary-300 text-primary-700 rounded-xl py-2 text-sm disabled:opacity-50">
@@ -83,7 +127,6 @@ export default function AiAccountPage() {
           <button disabled={busy} onClick={() => void run(refresh)} className="w-full text-xs text-gray-400 py-1 hover:text-gray-600">
             {busy ? '正在刷新…' : '刷新连接状态'}
           </button>
-          <p className="text-xs text-gray-400">断开仅删除本服务保存的授权。也可前往 Google 账号的第三方连接管理撤销授权。</p>
         </div>
       ) : (
         <div className="bg-white border rounded-2xl p-6 text-center text-sm text-gray-400">

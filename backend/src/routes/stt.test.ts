@@ -150,7 +150,7 @@ describe('handleSttStream — 正常识别流程', () => {
   beforeEach(async () => {
     iat = await createFakeIat((ws, msgs) => {
       const parsed = JSON.parse(msgs[msgs.length - 1]) as { header?: { status?: number } }
-      if (parsed.header?.status === 2) {
+      if (parsed.header?.status === 2 || (parsed as any).data?.status === 2) {
         ws.send(JSON.stringify(makeIatPayload('apple苹果', 1, 2)))
       }
     })
@@ -210,7 +210,7 @@ describe('handleSttStream — pending buffer 冲刷', () => {
   beforeEach(async () => {
     iat = await createFakeIat((ws, msgs) => {
       const parsed = JSON.parse(msgs[msgs.length - 1]) as { header?: { status?: number } }
-      if (parsed.header?.status === 2) {
+      if (parsed.header?.status === 2 || (parsed as any).data?.status === 2) {
         ws.send(JSON.stringify(makeIatPayload('test', 1, 2)))
       }
     })
@@ -240,7 +240,7 @@ describe('handleSttStream — 讯飞返回错误码', () => {
   beforeEach(async () => {
     iat = await createFakeIat((ws, msgs) => {
       const parsed = JSON.parse(msgs[msgs.length - 1]) as { header?: { status?: number } }
-      if (parsed.header?.status === 2) {
+      if (parsed.header?.status === 2 || (parsed as any).data?.status === 2) {
         ws.send(JSON.stringify({ header: { code: 10165, message: '无效签名', status: 2 } }))
       }
     })
@@ -270,7 +270,7 @@ describe('handleSttStream — 客户端提前断开', () => {
   beforeEach(async () => {
     iat = await createFakeIat((ws, msgs) => {
       const parsed = JSON.parse(msgs[msgs.length - 1]) as { header?: { status?: number } }
-      if (parsed.header?.status === 2) {
+      if (parsed.header?.status === 2 || (parsed as any).data?.status === 2) {
         setTimeout(() => {
           try { ws.send(JSON.stringify(makeIatPayload('late', 1, 2))) } catch { /* ignore */ }
         }, 80)
@@ -307,7 +307,7 @@ describe('handleSttStream — 多段结果合并', () => {
   beforeEach(async () => {
     iat = await createFakeIat((ws, msgs) => {
       const parsed = JSON.parse(msgs[msgs.length - 1]) as { header?: { status?: number } }
-      if (parsed.header?.status === 2) {
+      if (parsed.header?.status === 2 || (parsed as any).data?.status === 2) {
         const r1 = { sn: 1, ws: [{ bg: 0, cw: [{ w: '苹' }] }] }
         const r2 = { sn: 2, pgs: 'rpl', rg: [1, 1], ws: [{ bg: 0, cw: [{ w: 'apple' }] }] }
         const toMsg = (r: object, status: number) => JSON.stringify({

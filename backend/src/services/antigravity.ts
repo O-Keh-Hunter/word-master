@@ -8,7 +8,7 @@
  */
 
 import { randomUUID } from 'crypto'
-import { ANTIGRAVITY_ENDPOINT, ANTIGRAVITY_USER_AGENT, getAntigravityCredentials } from './antigravity-auth'
+import { ANTIGRAVITY_ENDPOINT, ANTIGRAVITY_USER_AGENT, getAntigravityCredentials, getSelectedModel } from './antigravity-auth'
 
 async function generateJson(system: string, prompt: string): Promise<Record<string, unknown>> {
   const account = await getAntigravityCredentials()
@@ -21,7 +21,7 @@ async function generateJson(system: string, prompt: string): Promise<Record<stri
     },
     body: JSON.stringify({
       project: account.projectId,
-      model: process.env.ANTIGRAVITY_MODEL || 'gemini-3-flash',
+      model: getSelectedModel(),
       userAgent: 'antigravity', requestType: 'agent', requestId: `agent-${randomUUID()}`,
       request: {
         contents: [{ role: 'user', parts: [{ text: prompt }] }],

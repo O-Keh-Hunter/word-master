@@ -19,6 +19,15 @@ const SCOPES = ['cloud-platform', 'userinfo.email', 'userinfo.profile', 'cclog',
 export const ANTIGRAVITY_ENDPOINT = 'https://daily-cloudcode-pa.sandbox.googleapis.com'
 export const ANTIGRAVITY_USER_AGENT = `antigravity/1.18.3 ${process.platform}/${process.arch}`
 
+export const SUPPORTED_MODELS = [
+  'gemini-3-flash',
+  'claude-sonnet-4-6',
+  'claude-opus-4-6-thinking',
+  'gemini-2.5-flash',
+] as const
+
+export type AntigravityModel = typeof SUPPORTED_MODELS[number]
+
 interface Account {
   id: string
   email: string
@@ -26,6 +35,7 @@ interface Account {
   accessToken: string
   refreshToken: string
   expiresAt: number
+  model?: string
 }
 interface PendingLogin { verifier: string; expiresAt: number; generation: number }
 const pending = new Map<string, PendingLogin>()
@@ -67,13 +77,33 @@ export function isAntigravityConnected(): boolean {
   try { return !!readAccount() } catch { return false }
 }
 
+let inMemoryModel: string | undefined
+
+export function getSelectedModel(): string {
+  const account = readAccount()
+  return account?.model || inMemoryModel || process.env.ANTIGRAVITY_MODEL || 'gemini-3-flash'
+}
+
+export function setSelectedModel(model: string): void {
+  if (!SUPPORTED_MODELS.includes(model as AntigravityModel)) {
+    throw new Error(`不支持的模型: ${model}，支持的模型为: ${SUPPORTED_MODELS.join(', ')}`)
+  }
+  inMemoryModel = model
+  const account = readAccount()
+  if (account) {
+    account.model = model
+    saveAccount(account)
+  }
+}
+
 export function getAntigravityStatus() {
   const account = readAccount()
   return {
     connected: !!account,
     email: account?.email ?? null,
     connectionId: account?.id ?? null,
-    model: process.env.ANTIGRAVITY_MODEL || 'gemini-3-flash',
+    model: getSelectedModel(),
+    supportedModels: [...SUPPORTED_MODELS],
   }
 }
 
