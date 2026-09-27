@@ -17,6 +17,17 @@ import aiAuthRouter from './routes/ai-auth'
 
 dotenv.config()
 
+import { setGlobalDispatcher, ProxyAgent } from 'undici'
+const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY
+if (proxyUrl) {
+  try {
+    setGlobalDispatcher(new ProxyAgent(proxyUrl))
+    console.log(`[proxy] 全局代理已启用: ${proxyUrl}`)
+  } catch (err) {
+    console.warn('[proxy] 全局代理初始化失败:', (err as Error).message)
+  }
+}
+
 const app = express()
 
 app.use(cors((req, callback) => callback(null, {

@@ -45,6 +45,7 @@ router.post('/complete', async (req, res) => {
     res.json(getAntigravityStatus())
   } catch (error) {
     // Service errors never include raw token responses or callback URLs.
+    console.error('[ai-auth] complete failed:', (error as Error).message);
     res.status(400).json({ error: (error as Error).message })
   }
 })
