@@ -12,7 +12,7 @@ type SttLanguage = 'zh_cn' | 'en_us'
 /**
  * 流式 STT WebSocket 处理器。
  * 客户端：按住 → 发送 binary PCM 块 → 松手发送文本 "done"
- * 服务端：通过抽象工厂选择讯飞/百度 → 实时转发 → 回传 {text} 给客户端
+ * 服务端：本地模式缓存 PCM，done 后识别；云服务实时转发；回传 {text}。
  */
 export function handleSttStream(clientWs: WebSocket, req: IncomingMessage): void {
   const urlObj = new URL(req.url ?? '/', 'http://localhost')

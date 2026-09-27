@@ -42,8 +42,11 @@ export function useAudioRecorder() {
   const stop = useCallback((): ArrayBuffer => {
     onChunkRef.current = null
     processorRef.current?.disconnect()
+    processorRef.current = null
     streamRef.current?.getTracks().forEach(t => t.stop())
-    contextRef.current?.close()
+    streamRef.current = null
+    if (contextRef.current?.state !== 'closed') void contextRef.current?.close().catch(() => {})
+    contextRef.current = null
 
     const total = chunksRef.current.reduce((s, c) => s + c.length, 0)
     const out = new Int16Array(total)

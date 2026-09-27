@@ -171,7 +171,7 @@ describe('语义匹配 - checkSemanticMatch', () => {
   // 根因：MiniLM 对零字符重叠的中文短语可能给出 ≥0.76 的相似度
   // 修复：Stage 3 灰色地带 (0.60–0.85) 引入 LLM 二次验证
   describe('完全无关中文短语不应匹配（Bug 修复验证）', () => {
-    // Mock LLM 验证器：模拟 DeepSeek 的正确语义判断
+    // Mock LLM 验证器：模拟 Antigravity 的正确语义判断
     const mockLLM: LlmVerifier = async (standard, answer) => {
       // 已知的无关词对 → 拒绝
       const unrelatedPairs = [

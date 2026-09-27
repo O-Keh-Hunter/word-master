@@ -15,7 +15,7 @@ let loadingPromise: Promise<FeaturePipeline> | null = null
  * LLM 语义验证器（可选注入）
  *
  * 当 MiniLM 分数处于灰色地带时调用，用于最终判定两个中文短语是否语义等价。
- * 由 app 启动时通过 setLlmVerifier() 注入 DeepSeek 实现；不注入时灰色地带回退到纯阈值判断。
+ * 由 app 启动时通过 setLlmVerifier() 注入 Antigravity 实现；不注入时灰色地带回退到纯阈值判断。
  * 测试中可替换为 mock 实现。
  */
 export type LlmVerifier = (standard: string, answer: string) => Promise<{ match: boolean; reason: string }>

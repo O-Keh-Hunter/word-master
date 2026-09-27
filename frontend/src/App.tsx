@@ -10,6 +10,7 @@ import QuizResultPage from '@/pages/QuizResultPage'
 import RecordsPage from '@/pages/RecordsPage'
 import PetPage from '@/pages/PetPage'
 import PetGamePage from '@/pages/PetGamePage'
+import AiAccountPage from '@/pages/AiAccountPage'
 
 export default function App() {
   // 全局禁止长按弹出系统上下文菜单（Android Chrome「标记为广告」等）
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="tasks" element={<TasksPage />} />
           <Route path="records" element={<RecordsPage />} />
           <Route path="pet" element={<PetPage />} />
+          <Route path="ai-account" element={<AiAccountPage />} />
         </Route>
         {/* 测验页不使用底部导航布局 */}
         <Route path="quiz/:sessionId" element={<QuizPage />} />

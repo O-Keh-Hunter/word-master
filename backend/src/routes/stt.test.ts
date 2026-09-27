@@ -20,6 +20,10 @@ import { WebSocketServer, WebSocket } from 'ws'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { handleSttStream } from './stt'
 
+// This suite specifically exercises the existing Xunfei protocol.
+beforeEach(() => vi.stubEnv('STT_PROVIDER', 'xunfei'))
+afterEach(() => vi.unstubAllEnvs())
+
 // ── Mock ─────────────────────────────────────────────────────────
 const mockConfig = vi.hoisted(() => ({ fakeIatPort: 0 }))
 vi.mock('../services/xunfei/auth', () => ({
