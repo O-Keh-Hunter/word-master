@@ -9,7 +9,7 @@ import { buildWsAuthUrl } from './auth'
  *   英文 → aisxping（标准英文男声）
  *   中文 → xiaoyan（小燕，标准女声）
  *
- * 注：超拟人接口（super smart-tts）需单独授权，暂用此标准接口。
+ * 超拟人接口由 super-tts.ts 单独处理。
  */
 export async function synthesize(
   text: string,

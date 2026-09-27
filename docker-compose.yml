@@ -17,12 +17,14 @@ services:
       - TRANSFORMERS_CACHE=/app/.cache
       # 默认使用下方的本地语音服务；也可显式切换云服务
       - STT_PROVIDER=${STT_PROVIDER:-local}
+      # xunfei-hybrid：中文聆小璇；英文可通过 XUNFEI_SUPER_EN_VOICE 切到超拟人
       - TTS_PROVIDER=${TTS_PROVIDER:-local}
       - LOCAL_SPEECH_URL=${LOCAL_SPEECH_URL:-http://speech:8001}
       # 讯飞语音（STT / TTS）
       - XUNFEI_APP_ID=${XUNFEI_APP_ID:-}
       - XUNFEI_API_KEY=${XUNFEI_API_KEY:-}
       - XUNFEI_API_SECRET=${XUNFEI_API_SECRET:-}
+      - XUNFEI_SUPER_EN_VOICE=${XUNFEI_SUPER_EN_VOICE:-}
       # 腾讯云语音（STT_PROVIDER=tencent 时使用）
       - TENCENT_APP_ID=${TENCENT_APP_ID:-}
       - TENCENT_SECRET_ID=${TENCENT_SECRET_ID:-}

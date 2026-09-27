@@ -107,7 +107,7 @@ Web H5，手机浏览器即可访问，无需下载 App。
 | 后端 | Node.js + Express + TypeScript |
 | 数据库 | SQLite（零配置，单文件，可直接备份） |
 | 语音识别 | 本地 SenseVoice Small（可切换讯飞 / 腾讯云） |
-| 语音合成 | 本地 Kokoro-82M v1.1（可切换讯飞） |
+| 语音合成 | 本地 Kokoro-82M v1.1 / 讯飞（支持中英文超拟人） |
 | 语义判题 | `@xenova/transformers` 本地推理（无需 GPU，无需联网） |
 | AI 例句生成 / 语义兜底 | Antigravity Gemini（Google OAuth） |
 | 测试 | Vitest + Supertest（91 个集成测试） |

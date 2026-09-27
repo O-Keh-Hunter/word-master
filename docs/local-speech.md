@@ -72,6 +72,26 @@ LOCAL_SPEECH_URL=http://127.0.0.1:8001
 - 若 NAS 延迟过高，可在局域网内另一台更强的电脑运行 speech，设置 `LOCAL_SPEECH_URL=http://电脑IP:8001`。仅在可信内网开放端口，并限制访问来源。
 - 仍可显式设置 `STT_PROVIDER=xunfei` 或 `tencent`；讯飞朗读用 `TTS_PROVIDER=xunfei`，并配置对应密钥。
 
+## 使用讯飞超拟人朗读
+
+试听后选择的方案是中文使用超拟人「聆小璇」（`x6_lingxiaoxuan_pro`），英文使用超拟人 Lila（`x5_EnUs_Lila_flow`）。在本机 `backend/.env` 或群晖 Compose 同目录 `.env` 中设置：
+
+```dotenv
+TTS_PROVIDER=xunfei-hybrid
+XUNFEI_SUPER_EN_VOICE=x5_EnUs_Lila_flow
+XUNFEI_APP_ID=你的APPID
+XUNFEI_API_KEY=你的APIKey
+XUNFEI_API_SECRET=你的APISecret
+```
+
+更新源码并重新构建应用镜像后，运行 `docker compose --profile local-speech up -d --force-recreate app`；本机开发重启后端。录音识别继续使用原来的 `STT_PROVIDER`。凭据只保存在私有 `.env`，不提交到仓库。
+
+中文提示 `xiaoyan` 或包含汉字的文本使用聆小璇；纯英文使用配置的 Lila，均返回 24 kHz MP3。超拟人不启用口语化改写，保持学习文本。请求失败会报错，不会悄悄换回其他声音。
+
+当前应用已实测中文聆小璇和英文 Lila 成功。超拟人服务额度与发音人权限分别授权，其他应用若遇到 `11200`，需在[讯飞控制台](https://console.xfyun.cn/services/uts)检查对应发音人和服务权限。协议见[官方文档](https://www.xfyun.cn/doc/spark/super%20smart-tts.html)。
+
+开通英文发音人后，在同一 `.env` 添加 `XUNFEI_SUPER_EN_VOICE=x5_EnUs_Lila_flow`（或 `x5_EnUs_Grant_flow`），并重启本机后端或重建 Compose 的 app 容器，即可让英文也走超拟人接口。留空使用标准英文；填入未授权的发音人会直接提示权限错误。
+
 ## 效果验收
 
 服务启动后可先做真实模型冒烟检查，生成可试听的中英文 WAV、验证缓存，并识别模型包附带的中英文录音：
