@@ -5,10 +5,12 @@ import ttsRouter from './tts'
 import { synthesizeLocal } from '../services/local-speech'
 import { synthesize as synthesizeXunfei } from '../services/xunfei/tts'
 import { synthesizeSuper } from '../services/xunfei/super-tts'
+import { synthesizeNeural } from '../services/neural-tts'
 
 vi.mock('../services/local-speech', () => ({ synthesizeLocal: vi.fn(async () => Buffer.from('RIFF0000WAVEtest')) }))
 vi.mock('../services/xunfei/tts', () => ({ synthesize: vi.fn(async () => Buffer.from('mp3-audio')) }))
 vi.mock('../services/xunfei/super-tts', () => ({ synthesizeSuper: vi.fn(async () => Buffer.from('super-mp3-audio')) }))
+vi.mock('../services/neural-tts', () => ({ synthesizeNeural: vi.fn(async () => Buffer.from('RIFF0000WAVEneural')) }))
 const app = express().use(express.json()).use('/api/tts', ttsRouter)
 beforeEach(() => {
   vi.clearAllMocks()
@@ -18,6 +20,29 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs())
 
 describe('TTS provider and audio response', () => {
+  it.each(['qwen3', 'cosyvoice3'])('routes %s to its worker and returns WAV', async provider => {
+    vi.stubEnv('TTS_PROVIDER', provider)
+    const response = await request(app).post('/api/tts').send({ text: '你好', vcn: 'xiaoyan' })
+    expect(response.status).toBe(200)
+    expect(response.headers['content-type']).toBe('audio/wav')
+    expect(synthesizeNeural).toHaveBeenCalledWith(provider, '你好', 'xiaoyan')
+    expect(synthesizeLocal).not.toHaveBeenCalled()
+    expect(synthesizeSuper).not.toHaveBeenCalled()
+  })
+  it('does not silently select Kokoro for a misspelled provider', async () => {
+    vi.stubEnv('TTS_PROVIDER', 'qwen-typo')
+    expect((await request(app).post('/api/tts').send({ text: 'apple' })).status).toBe(500)
+    expect(synthesizeLocal).not.toHaveBeenCalled()
+  })
+  it('surfaces an unavailable model without silently changing providers', async () => {
+    vi.stubEnv('TTS_PROVIDER', 'qwen3')
+    vi.mocked(synthesizeNeural).mockRejectedValueOnce(new Error('模型不可用'))
+    const response = await request(app).post('/api/tts').send({ text: 'apple' })
+    expect(response.status).toBe(500)
+    expect(response.body.error).toBe('模型不可用')
+    expect(synthesizeLocal).not.toHaveBeenCalled()
+    expect(synthesizeSuper).not.toHaveBeenCalled()
+  })
   it('returns WAV for the default local provider', async () => {
     const response = await request(app).post('/api/tts').send({ text: 'apple' })
     expect(response.status).toBe(200)

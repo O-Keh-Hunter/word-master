@@ -39,6 +39,8 @@ antigravity-account.json.*.tmp
 
 # 本地语音运行环境、模型及生成音频
 speech/.venv/
+speech/.venv-*/
+speech/vendor/
 speech/models/
 speech/cache/
 speech/samples/

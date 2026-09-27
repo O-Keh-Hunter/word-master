@@ -20,6 +20,12 @@ services:
       # xunfei-hybrid：中文聆小璇；英文可通过 XUNFEI_SUPER_EN_VOICE 切到超拟人
       - TTS_PROVIDER=${TTS_PROVIDER:-local}
       - LOCAL_SPEECH_URL=${LOCAL_SPEECH_URL:-http://speech:8001}
+      # 独立模型服务：填写 GPU 电脑的局域网地址（容器内 localhost 不是宿主机）
+      - QWEN3_TTS_URL=${QWEN3_TTS_URL:-}
+      - COSYVOICE3_TTS_URL=${COSYVOICE3_TTS_URL:-}
+      - QWEN3_TTS_API_KEY=${QWEN3_TTS_API_KEY:-}
+      - COSYVOICE3_TTS_API_KEY=${COSYVOICE3_TTS_API_KEY:-}
+      - NEURAL_TTS_TIMEOUT_SECONDS=${NEURAL_TTS_TIMEOUT_SECONDS:-180}
       # 讯飞语音（STT / TTS）
       - XUNFEI_APP_ID=${XUNFEI_APP_ID:-}
       - XUNFEI_API_KEY=${XUNFEI_API_KEY:-}

@@ -74,6 +74,8 @@ LOCAL_SPEECH_URL=http://127.0.0.1:8001
 
 ## 使用讯飞超拟人朗读
 
+如需 Qwen3-TTS 1.7B 或 CosyVoice 3，见[开源高质量朗读服务](neural-tts.md)。这两种服务可单独部署在 GPU 电脑，录音识别仍可在群晖运行。
+
 试听后选择的方案是中文使用超拟人「聆小璇」（`x6_lingxiaoxuan_pro`），英文使用超拟人 Lila（`x5_EnUs_Lila_flow`）。在本机 `backend/.env` 或群晖 Compose 同目录 `.env` 中设置：
 
 ```dotenv
