@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import db from '../db/client'
 import type { WordbookRow, WordbookWithCount, ItemType } from '../types/index'
-import { generateExample } from '../services/deepseek'
+import { isAntigravityConnected } from '../services/antigravity-auth'
+import { generateExample } from '../services/antigravity'
 
 const router = Router()
 
@@ -173,7 +174,7 @@ router.post('/:id/import', (req, res) => {
 
   // 导入完成后，后台异步为新插入的词条生成例句（不阻塞响应）
   // 只处理本次导入的、还没有例句的词条
-  if (process.env.DEEPSEEK_API_KEY) {
+  if (isAntigravityConnected()) {
     setImmediate(() => triggerExampleGeneration(Number(req.params.id)))
   }
 })

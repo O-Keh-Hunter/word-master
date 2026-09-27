@@ -15,24 +15,64 @@ services:
       - NODE_ENV=production
       # 语义模型缓存目录（固定路径，不依赖运行用户）
       - TRANSFORMERS_CACHE=/app/.cache
-      # 语音服务商选择（xunfei / tencent）
-      - STT_PROVIDER=${STT_PROVIDER:-xunfei}
+      # 默认使用下方的本地语音服务；也可显式切换云服务
+      - STT_PROVIDER=${STT_PROVIDER:-local}
+      # xunfei-hybrid：中文聆小璇；英文可通过 XUNFEI_SUPER_EN_VOICE 切到超拟人
+      - TTS_PROVIDER=${TTS_PROVIDER:-local}
+      - LOCAL_SPEECH_URL=${LOCAL_SPEECH_URL:-http://speech:8001}
+      # 独立模型服务：填写 GPU 电脑的局域网地址（容器内 localhost 不是宿主机）
+      - QWEN3_TTS_URL=${QWEN3_TTS_URL:-}
+      - COSYVOICE3_TTS_URL=${COSYVOICE3_TTS_URL:-}
+      - QWEN3_TTS_API_KEY=${QWEN3_TTS_API_KEY:-}
+      - COSYVOICE3_TTS_API_KEY=${COSYVOICE3_TTS_API_KEY:-}
+      - NEURAL_TTS_TIMEOUT_SECONDS=${NEURAL_TTS_TIMEOUT_SECONDS:-180}
       # 讯飞语音（STT / TTS）
       - XUNFEI_APP_ID=${XUNFEI_APP_ID:-}
       - XUNFEI_API_KEY=${XUNFEI_API_KEY:-}
       - XUNFEI_API_SECRET=${XUNFEI_API_SECRET:-}
+      - XUNFEI_SUPER_EN_VOICE=${XUNFEI_SUPER_EN_VOICE:-}
       # 腾讯云语音（STT_PROVIDER=tencent 时使用）
       - TENCENT_APP_ID=${TENCENT_APP_ID:-}
       - TENCENT_SECRET_ID=${TENCENT_SECRET_ID:-}
       - TENCENT_SECRET_KEY=${TENCENT_SECRET_KEY:-}
-      # DeepSeek AI 例句生成（可选）
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      # Antigravity Google OAuth（在网页 AI 账号设置中登录）
+      - AI_ADMIN_PASSWORD=${AI_ADMIN_PASSWORD:-}
+      - ANTIGRAVITY_CLIENT_ID=${ANTIGRAVITY_CLIENT_ID:-}
+      - ANTIGRAVITY_CLIENT_SECRET=${ANTIGRAVITY_CLIENT_SECRET:-}
+      - ANTIGRAVITY_MODEL=${ANTIGRAVITY_MODEL:-gemini-3-flash}
+      - ANTIGRAVITY_AUTH_FILE=/app/data/antigravity-account.json
       # 子路径部署时设置（需与镜像构建时的 --build-arg VITE_BASE_URL 一致）
       - APP_BASE_PATH=${APP_BASE_PATH:-/}
       # 前后端分开部署时才需要配置（同源部署留空）
       - CORS_ORIGIN=${CORS_ORIGIN:-}
     restart: unless-stopped
 
+  speech:
+    # 首次部署先执行 download_models.py，详见 docs/local-speech.md
+    build:
+      context: .
+      dockerfile: speech/Dockerfile
+    profiles: [local-speech]
+    volumes:
+      - speech-models:/models
+      - speech-cache:/cache
+    environment:
+      - SPEECH_MODEL_PROFILE=${SPEECH_MODEL_PROFILE:-quality}
+      - SPEECH_THREADS=${SPEECH_THREADS:-2}
+      - SPEECH_CACHE_MB=${SPEECH_CACHE_MB:-256}
+      - KOKORO_EN_SPEAKER=${KOKORO_EN_SPEAKER:-0}
+      - KOKORO_ZH_SPEAKER=${KOKORO_ZH_SPEAKER:-3}
+    # 只通过 Docker 内网访问，不向公网发布语音接口
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 180s
+      retries: 3
+    restart: unless-stopped
+
 volumes:
   sqlite-data:
   model-cache:
+  speech-models:
+  speech-cache:

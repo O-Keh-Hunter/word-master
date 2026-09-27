@@ -1,0 +1,7 @@
+.venv
+.venv-*
+vendor
+models
+cache
+samples
+__pycache__

@@ -18,7 +18,8 @@ import dotenv from 'dotenv'
 import path from 'path'
 import fs from 'fs'
 import Database from 'better-sqlite3'
-import { generateExample } from '../src/services/deepseek'
+import { isAntigravityConnected } from '../src/services/antigravity-auth'
+import { generateExample } from '../src/services/antigravity'
 
 dotenv.config({ path: path.join(__dirname, '..', '.env') })
 
@@ -60,8 +61,8 @@ if (total === 0) {
 }
 
 console.log(`📋 共 ${total} 条待生成${isDryRun ? '（dry-run 模式，不写入）' : ''}`)
-if (!process.env.DEEPSEEK_API_KEY) {
-  console.error('❌ 请在 .env 中配置 DEEPSEEK_API_KEY')
+if (!isAntigravityConnected()) {
+  console.error('❌ 请先在网页的 AI 账号页面连接 Google 账号')
   process.exit(1)
 }
 

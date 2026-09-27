@@ -52,7 +52,7 @@ Word Master 就是为了解决这两个问题而生的。
 
 ### 🎤 开口说，不只是点屏幕
 
-中译英和拼写阶段支持**语音输入**，孩子对着手机说出答案，讯飞语音识别把声音转成文字再判题。让背单词这件事同时调动眼、耳、口，记忆效果更扎实。
+中译英和拼写阶段支持**语音输入**，孩子对着手机说出答案，本地语音模型把声音转成文字再判题。让背单词这件事同时调动眼、耳、口，记忆效果更扎实。
 
 ### 🤖 AI 判题，不死扣拼写
 
@@ -75,7 +75,7 @@ Word Master 就是为了解决这两个问题而生的。
 
 ### 🔊 听准发音，边学边听
 
-词卡展示时自动播放单词发音，测验过程中随时可以点击重听。讯飞 TTS 合成，发音自然准确。
+词卡展示时自动播放单词发音，测验过程中随时可以点击重听。默认使用本地 Kokoro 合成，并缓存重复朗读的音频。
 
 ### 🐾 宠物养成，坚持有奖励
 
@@ -106,11 +106,13 @@ Web H5，手机浏览器即可访问，无需下载 App。
 | 前端 | React 19 + TypeScript + Vite + Tailwind CSS |
 | 后端 | Node.js + Express + TypeScript |
 | 数据库 | SQLite（零配置，单文件，可直接备份） |
-| 语音识别 | 讯飞 WebSocket STT API |
-| 语音合成 | 讯飞 WebSocket TTS API |
+| 语音识别 | 本地 SenseVoice Small（可切换讯飞 / 腾讯云） |
+| 语音合成 | Kokoro-82M / Qwen3-TTS / CosyVoice 3 / 讯飞中英文超拟人 |
 | 语义判题 | `@xenova/transformers` 本地推理（无需 GPU，无需联网） |
-| AI 例句生成 | DeepSeek API |
+| AI 例句生成 / 语义兜底 | Antigravity Gemini（Google OAuth） |
 | 测试 | Vitest + Supertest（91 个集成测试） |
+
+Qwen3-TTS / CosyVoice 3 的独立部署、CPU 安装、参考音色和服务切换见[开源朗读服务指南](docs/neural-tts.md)。
 
 ---
 
@@ -121,7 +123,11 @@ Web H5，手机浏览器即可访问，无需下载 App。
 - Docker 20.10+
 - Docker Compose v2（`docker compose` 命令）
 
-### 快速部署（无需克隆仓库）
+### 本地语音部署（群晖 / Docker）
+
+默认语音现使用 SenseVoice Small + Kokoro-82M，需构建本次源码并启动独立 speech 服务。请按 [本地语音部署与效果验收](docs/local-speech.md) 操作；DS423+ / 18 GB 使用完整精度配置作为基线，实际延迟待 NAS 验证。
+
+### 原有发布镜像部署（云端语音）
 
 只需两个文件即可部署，镜像由 GitHub Actions 自动构建：
 
@@ -144,13 +150,21 @@ docker compose up -d
 编辑 `.env` 文件：
 
 ```env
-# 讯飞语音（STT / TTS）— 不配置则语音功能不可用，其余功能正常
+# 默认本地语音（Docker 地址；开发时改为 http://127.0.0.1:8001）
+STT_PROVIDER=local
+TTS_PROVIDER=local
+LOCAL_SPEECH_URL=http://speech:8001
+
+# 仅切换讯飞时配置以下密钥
 XUNFEI_APP_ID=你的AppID
 XUNFEI_API_KEY=你的APIKey
 XUNFEI_API_SECRET=你的APISecret
 
-# DeepSeek（AI 例句生成）— 可选
-DEEPSEEK_API_KEY=你的APIKey
+# Antigravity（AI 例句生成及语义兜底）— 可选
+AI_ADMIN_PASSWORD=自行设置的强密码
+ANTIGRAVITY_CLIENT_ID=兼容的OAuth客户端ID
+ANTIGRAVITY_CLIENT_SECRET=对应的OAuth客户端密钥
+ANTIGRAVITY_MODEL=gemini-3-flash
 
 # 子路径部署（可选）— 同一域名下通过不同路径区分多个应用时配置
 # 需与构建镜像时的 --build-arg VITE_BASE_URL 保持一致，默认根路径无需填写
@@ -158,6 +172,8 @@ APP_BASE_PATH=/
 ```
 
 讯飞 API 申请地址：[https://www.xfyun.cn](https://www.xfyun.cn)
+
+Google 账号连接步骤见 [Antigravity OAuth 配置](docs/antigravity.md)。在首页「AI 账号设置」完成授权后生效，无需填写 API Key 或重启。
 
 #### 子路径部署（Nginx 反向代理）
 

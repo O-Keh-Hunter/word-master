@@ -281,6 +281,9 @@ export default function HomePage() {
       </button>
 
       {/* ── 版本信息 ──────────────────────────────────── */}
+      <button onClick={() => navigate('/ai-account')} className="w-full mt-4 py-3 text-sm text-primary-600">
+        AI 账号设置
+      </button>
       <VersionTag />
 
       {/* ── 选学生弹窗 ──────────────────────────────────── */}

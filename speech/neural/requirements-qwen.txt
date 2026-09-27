@@ -1,0 +1,3 @@
+-r requirements-server.txt
+qwen-tts==0.1.1
+# Install a matching torch/torchaudio CUDA build first, as described in docs/neural-tts.md.

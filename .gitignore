@@ -32,3 +32,16 @@ Thumbs.db
 # 日志
 *.log
 npm-debug.log*
+
+# Antigravity OAuth 凭据（自定义目录也不提交）
+antigravity-account.json
+antigravity-account.json.*.tmp
+
+# 本地语音运行环境、模型及生成音频
+speech/.venv/
+speech/.venv-*/
+speech/vendor/
+speech/models/
+speech/cache/
+speech/samples/
+**/__pycache__/

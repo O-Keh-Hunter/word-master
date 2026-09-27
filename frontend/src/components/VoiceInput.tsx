@@ -25,6 +25,7 @@ export default function VoiceInput({ lang, onResult, onError, disabled }: Props)
   const wsRef            = useRef<WebSocket | null>(null)
   const pendingChunksRef = useRef<ArrayBuffer[]>([])
   const wsEndedRef       = useRef(false)
+  const pendingDoneRef   = useRef(false)
   // 用 ref 保持最新 callback，避免 WS 闭包引用陈旧值
   const onResultRef      = useRef(onResult)
   const onErrorRef       = useRef(onError)
@@ -32,24 +33,25 @@ export default function VoiceInput({ lang, onResult, onError, disabled }: Props)
   const [pressing,    setPressing]   = useState(false) // 浮窗已展示，录音进行中
   const [cancelMode,  setCancelMode] = useState(false)
   const [ending,      setEnding]     = useState(false) // 松手后延迟结束中
+  const [recognizing, setRecognizing] = useState(false)
   const endingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { onResultRef.current = onResult }, [onResult])
   useEffect(() => { onErrorRef.current  = onError  }, [onError])
   // 组件卸载时关闭残留 WS 并清除延迟定时器
   useEffect(() => () => {
+    cancelledDuringConnectRef.current = true
     if (endingTimerRef.current) clearTimeout(endingTimerRef.current)
     wsRef.current?.close(); wsRef.current = null
-  }, [])
+    stop()
+  }, [stop])
 
   // ── 开始录音（同时建立流式 WebSocket） ──────────────────────────
   const doStart = useCallback(async () => {
-    if (disabled) return
-    // 关闭上一次残留 WS
-    wsRef.current?.close()
-    wsRef.current = null
+    if (disabled || wsRef.current) return
     pendingChunksRef.current = []
     wsEndedRef.current = false
+    pendingDoneRef.current = false
 
     // 与申请麦克风权限并行建立 WS，节省约 300ms
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -58,11 +60,21 @@ export default function VoiceInput({ lang, onResult, onError, disabled }: Props)
 
     // WS 就绪：冲刷积压的音频块
     ws.onopen = () => {
+      if (wsRef.current !== ws) return
       for (const buf of pendingChunksRef.current) ws.send(buf)
       pendingChunksRef.current = []
+      if (pendingDoneRef.current) ws.send('done')
     }
     // 收到识别结果
     ws.onmessage = (e: MessageEvent) => {
+      if (wsRef.current !== ws) return
+      setRecognizing(false)
+      setConnecting(false)
+      setPressing(false)
+      setEnding(false)
+      cancelledDuringConnectRef.current = true
+      if (endingTimerRef.current) clearTimeout(endingTimerRef.current)
+      stop()
       try {
         const msg = JSON.parse(e.data as string) as { text?: string; error?: string }
         if (msg.error) {
@@ -75,8 +87,28 @@ export default function VoiceInput({ lang, onResult, onError, disabled }: Props)
       if (wsRef.current === ws) wsRef.current = null
     }
     ws.onerror = () => {
+      if (wsRef.current !== ws) return
       onErrorRef.current?.('网络错误，请重试')
+      setRecognizing(false)
+      setPressing(false)
+      setEnding(false)
+      setConnecting(false)
+      cancelledDuringConnectRef.current = true
+      if (endingTimerRef.current) clearTimeout(endingTimerRef.current)
+      stop()
       if (wsRef.current === ws) wsRef.current = null
+    }
+    ws.onclose = () => {
+      if (wsRef.current !== ws) return
+      wsRef.current = null
+      setRecognizing(false)
+      setPressing(false)
+      setEnding(false)
+      setConnecting(false)
+      cancelledDuringConnectRef.current = true
+      if (endingTimerRef.current) clearTimeout(endingTimerRef.current)
+      stop()
+      onErrorRef.current?.('语音连接已断开，请重试')
     }
 
     // 每个音频块：就绪则发送，否则入队等 onopen 冲刷
@@ -151,8 +183,10 @@ export default function VoiceInput({ lang, onResult, onError, disabled }: Props)
         setPressing(false)
         stop()
         const ws = wsRef.current
-        if (ws && ws.readyState !== WebSocket.CLOSED) {
-          ws.send('done')  // 结果经 ws.onmessage 异步返回
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+          setRecognizing(true)
+          if (ws.readyState === WebSocket.OPEN) ws.send('done')
+          else pendingDoneRef.current = true
         }
       }, END_DELAY)
     }
@@ -297,7 +331,7 @@ export default function VoiceInput({ lang, onResult, onError, disabled }: Props)
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onContextMenu={e => e.preventDefault()}
-        disabled={disabled}
+        disabled={disabled || recognizing}
         style={{
           WebkitTouchCallout: 'none',
           touchAction: 'none',
@@ -312,9 +346,8 @@ export default function VoiceInput({ lang, onResult, onError, disabled }: Props)
             : 'bg-primary-100 text-primary-700 border-2 border-primary-200 hover:bg-primary-200'
           } disabled:opacity-40 disabled:cursor-not-allowed`}
       >
-        {ending ? '🎤 即将结束…' : pressing || recording ? '🎤 录音中…' : connecting ? '连接中…' : '🎤 按住说话'}
+        {recognizing ? '正在识别…' : ending ? '🎤 即将结束…' : pressing || recording ? '🎤 录音中…' : connecting ? '连接中…' : '🎤 按住说话'}
       </button>
     </>
   )
 }
-

@@ -126,7 +126,7 @@ backend/src/
     xunfei/stt.ts           # 讯飞 STT
     xunfei/tts.ts           # 讯飞 TTS
     semantic.ts             # 三阶段语义匹配（精确/关键词/MiniLM向量）
-    deepseek.ts             # DeepSeek V3 例句生成
+    antigravity.ts             # Antigravity Gemini 例句生成
   types/index.ts
   index.ts                  # Express 入口
 ```
@@ -321,6 +321,6 @@ CREATE TABLE IF NOT EXISTS pet_status (
 ## 开发规范
 
 - 样式方案：Tailwind CSS
-- 环境变量：`.env` 管理讯飞 AppID/APIKey + DeepSeek API Key
+- 环境变量：`.env` 管理讯飞 AppID/APIKey + Antigravity OAuth 管理密码及服务端令牌
 - API 风格：RESTful，前后端 HTTP JSON 通信
 - 第三方服务抽象层：`backend/src/services/`，可适配不同服务商

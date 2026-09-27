@@ -36,13 +36,21 @@ cp backend/.env.example backend/.env
 编辑 `backend/.env`：
 
 ```env
-# 讯飞语音（STT / TTS）
+# 默认本地语音
+STT_PROVIDER=local
+TTS_PROVIDER=local
+LOCAL_SPEECH_URL=http://127.0.0.1:8001
+
+# 仅选择讯飞时配置（STT_PROVIDER=xunfei / TTS_PROVIDER=xunfei）
 XUNFEI_APP_ID=你的AppID
 XUNFEI_API_KEY=你的APIKey
 XUNFEI_API_SECRET=你的APISecret
 
-# DeepSeek（AI 例句生成，可选）
-DEEPSEEK_API_KEY=你的APIKey
+# Antigravity（Google OAuth，可选）
+AI_ADMIN_PASSWORD=自行设置的强密码
+ANTIGRAVITY_CLIENT_ID=兼容的OAuth客户端ID
+ANTIGRAVITY_CLIENT_SECRET=对应的OAuth客户端密钥
+ANTIGRAVITY_MODEL=gemini-3-flash
 
 # 子路径部署（可选，根路径部署无需修改）
 # 需与构建镜像时的 --build-arg VITE_BASE_URL 保持一致
@@ -52,7 +60,9 @@ APP_BASE_PATH=/
 # DB_PATH=./data/word-master.db
 ```
 
-> 讯飞语音非必须，不配置时语音输入和朗读功能不可用，其余功能正常。
+Google 登录：启动服务后进入首页「AI 账号设置」，输入管理密码并授权。完整步骤及远程部署回调方法见 [Antigravity OAuth 配置](antigravity.md)。
+
+> 默认语音不需要讯飞密钥，但需要先启动本地 speech 服务。安装、模型下载及验收见 [本地语音指南](local-speech.md)。
 
 ---
 
@@ -133,7 +143,7 @@ word-master/
 │   │   ├── services/
 │   │   │   ├── xunfei/         # 讯飞语音（auth / stt / tts）
 │   │   │   ├── semantic.ts     # 本地语义模型推理
-│   │   │   └── deepseek.ts     # AI 例句生成
+│   │   │   └── antigravity.ts     # AI 例句生成
 │   │   └── db/
 │   │       ├── client.ts       # better-sqlite3 单例
 │   │       └── schema.ts       # 建表 + 幂等 ALTER TABLE

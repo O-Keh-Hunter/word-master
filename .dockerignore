@@ -5,3 +5,10 @@ backend/data
 **/.env
 **/.env.*
 !**/.env.example
+speech/.venv
+speech/.venv-*
+speech/vendor
+speech/models
+speech/cache
+speech/samples
+**/__pycache__
