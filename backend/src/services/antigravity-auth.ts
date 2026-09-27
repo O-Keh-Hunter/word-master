@@ -202,7 +202,7 @@ export async function beginAntigravityLogin() {
   const url = new URL('https://accounts.google.com/o/oauth2/v2/auth')
   url.search = new URLSearchParams({
     client_id, redirect_uri: REDIRECT_URI, response_type: 'code', scope: SCOPES.join(' '),
-    access_type: 'offline', prompt: 'consent', state,
+    access_type: 'offline', prompt: 'select_account consent', state,
     code_challenge: createHash('sha256').update(verifier).digest('base64url'), code_challenge_method: 'S256',
   }).toString()
   const automaticCallback = await startCallbackServer()
